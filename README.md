@@ -1,7 +1,7 @@
 # Azure Arc Enabled Windows 2012 ESU
 This is a repository that hosts a sample run through of the Resource Manager API (provided by management.azure.com) to perform the following operations:
-+ Creating an ESU license (deactivated)
-+ Updating an ESU license (activated)
++ Create an ESU license (deactivated)
++ Update an ESU license (activated)
 + Link ESU license to a Machine
 + Delete linked ESU license from a Machine
 + Deactivate an ESU license
