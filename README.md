@@ -11,6 +11,9 @@ In accordance with best practices I used a service principal to log in and perfo
 
 I cannot stress enough how important it is that the underpinning licensing requirements for ESU are understood.  If you use this you are responsible for the licensing count and ensuring that the number of cores applied meet all licensing requirements for ESU delivery.  At a minimum please ensure that you read through https://learn.microsoft.com/en-us/azure/azure-arc/servers/license-extended-security-updates - and if this is unclear and you are still uncertain, please work with your local Microsoft licensing expert to ensure that you are not breaking licensing compliance.
 
+# Pre-requisites:
+Tested on PowerShell 7.3.7 with PowerShell Az module 10.3.0 - running on prior versions will generate errors.
+
 # Please note:
 This information is being provided as-is with the terms of the MIT license, with no warranty/guarantee or support.  It is free to use - and for demonstration purposes only.  The process of hardening this into your needs is a task I leave to you.
 
