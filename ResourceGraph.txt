@@ -1,0 +1,8 @@
+resources
+| where type == 'microsoft.hybridcompute/machines'
+| extend p = parse_json(properties)
+| extend osSKU = p.osSku, physicalCores=p.detectedProperties.coreCount
+| extend logicalCores = p.detectedProperties.logicalCoreCount
+| where osSKU has 'windows server 2012'
+| project name, type, location, osSKU, physicalCores, logicalCores, properties
+| order by location, name
