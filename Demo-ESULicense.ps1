@@ -19,13 +19,13 @@
     The password of the service principal. Do not specify if using your own login.
 
 .PARAMETER region
-    The Azure region to create licenses in.
+    The Azure region to create licenses in. The Azure region of the VM in all other operations.
 
 .PARAMETER subscriptionId
     The subscription ID of the Azure subscription.
 
 .PARAMETER resourceGroup
-    The Resource Group of License files when performing License Operations.  The Resource Group of the Machine when performing Machine Operations.
+    The Resource Group of License files when performing License Operations.  The Resource Group of the Machine(s) when performing Machine Operations.
 
 .PARAMETER machineName
     The name of the machine to perform the operation on.
@@ -43,15 +43,24 @@
     The resource ID of the ESU license when performing Link, Unlink, Activate, Deactivate, or Delete operations.
 
 .EXAMPLE
-    .\Demo-ESULicense.ps1 -licenseOperation Create -TenantId "00000000-0000-0000-0000-000000000000" -ApplicationId "00000000-0000-0000-0000-000000000000" -SecurePassword "00000000-0000-0000-0000-000000000000" -region "eastus" -subscriptionId "00000000-0000-0000-0000-000000000000" -resourceGroup "ESU-Licenses"
+    .\Demo-ESULicense.ps1 -licenseOperation Create -TenantId "00000000-0000-0000-0000-000000000000" -ApplicationId "00000000-0000-0000-0000-000000000000" `
+    -SecurePassword "00000000-0000-0000-0000-000000000000" -region "eastus" -subscriptionId "00000000-0000-0000-0000-000000000000" `
+    -resourceGroup "ESU-Licenses"
+    
     This example will create a new ESU license in the East US region with a Service Principal login and will prompt you for license details.
 
 .EXAMPLE
-    .\Demo-ESULicense.ps1 -licenseOperation Link -TenantId "00000000-0000-0000-0000-000000000000" -region "eastus" -subscriptionId "00000000-0000-0000-0000-000000000000" -resourceGroup "ESU-Licenses" -machineName "machine1" -licenseResourceId "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/ESU-Licenses/providers/Microsoft.HybridCompute/licenses/Datacenter-vCore"
+    .\Demo-ESULicense.ps1 -licenseOperation Link -TenantId "00000000-0000-0000-0000-000000000000" -region "eastus" `
+    -subscriptionId "00000000-0000-0000-0000-000000000000" -resourceGroup "ESU-Licenses" -machineName "machine1" `
+    -licenseResourceId "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/ESU-Licenses/providers/Microsoft.HybridCompute/licenses/Datacenter-vCore"
+    
     This example will link the license to the machine named machine1 using the current logged in user's credentials.
 
 .EXAMPLE
-    .\Demo-ESULicense.ps1 -licenseOperation Unlink -TenantId "00000000-0000-0000-0000-000000000000" -region "eastus" -subscriptionId "00000000-0000-0000-0000-000000000000" -resourceGroup "ESU-Licenses" -allMachinesInRG -licenseResourceId "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/ESU-Licenses/providers/Microsoft.HybridCompute/licenses/Datacenter-vCore"
+    .\Demo-ESULicense.ps1 -licenseOperation Unlink -TenantId "00000000-0000-0000-0000-000000000000" -region "eastus" `
+    -subscriptionId "00000000-0000-0000-0000-000000000000" -resourceGroup "ESU-Licenses" -allMachinesInRG `
+    -licenseResourceId "/subscriptions/00000000-0000-0000-0000-000000000000/resourceGroups/ESU-Licenses/providers/Microsoft.HybridCompute/licenses/Datacenter-vCore"
+    
     This example will unlink the license from all machines in the resource group using the current logged in user's credentials.
 
 .OUTPUTS
@@ -214,7 +223,7 @@ Function LinkLicense {
         $machineName,
 
         [parameter(Mandatory=$true)]
-        $machineResourceGroupName,
+        $resourceGroup,
 
         [parameter(Mandatory=$true)]
         $licenseResourceId,
@@ -222,7 +231,7 @@ Function LinkLicense {
         [parameter(Mandatory=$true)]
         $region
     )
-    $machineResourceId = (Get-AzConnectedMachine -Name $machineName -ResourceGroupName $machineResourceGroupName).Id
+    $machineResourceId = (Get-AzConnectedMachine -Name $machineName -ResourceGroupName $resourceGroup).Id
     $linkLicenseUrl = "https://management.azure.com{0}/licenseProfiles/default?api-version=2023-06-20-preview " -f $machineResourceId
     $linkBody = @{
         location = $region
@@ -249,9 +258,9 @@ Function DeleteLicenseLink {
         $machineName,
 
         [parameter(Mandatory=$true)]
-        $machineResourceGroupName
+        $resourceGroup
     )
-    $machineResourceId = (Get-AzConnectedMachine -Name $machineName -ResourceGroupName $machineResourceGroupName).Id
+    $machineResourceId = (Get-AzConnectedMachine -Name $machineName -ResourceGroupName $resourceGroup).Id
     $linkLicenseUrl = "https://management.azure.com{0}/licenseProfiles/default?api-version=2023-06-20-preview " -f $machineResourceId
     $headers = @{
         Authorization = "Bearer $token"

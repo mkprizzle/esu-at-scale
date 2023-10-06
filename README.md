@@ -2,8 +2,8 @@
 This is a repository that hosts a forked and updated version of a sample set of scripted operations (Created by Adam Turner) using the Resource Manager API (provided by management.azure.com) to perform the following operations:
 + Create an ESU license (activated or deactivated)
 + Update an ESU license (activate or deactivate)
-+ Link ESU license to an Arc-Enabled Windows 2012 Machine or specify an array of comma-separated machine names, or provide a CSV with a MachineName column
-+ Delete linked ESU license from an Arc-Enabled Windows 2012 Machine, an array of machines, or provide a CSV
++ Link ESU license to an Arc-Enabled Windows 2012 Machine or specify an array of comma-separated machine names, or provide a CSV with a MachineName column, or work within an entire Resource Group.
++ Delete linked ESU license from an Arc-Enabled Windows 2012 Machine, an array of machines, or provide a CSV, or within an entire Resource Goup.
 + Deactivate an ESU license
 + Delete an ESU license
 
