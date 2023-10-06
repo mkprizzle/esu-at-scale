@@ -1,21 +1,27 @@
 # Azure Arc Enabled Windows 2012 ESU
-This is a repository that hosts a sample run through of the Resource Manager API (provided by management.azure.com) to perform the following operations:
-+ Create an ESU license (deactivated)
-+ Update an ESU license (activated)
-+ Link ESU license to an Arc-Enabled Windows 2012 Machine
-+ Delete linked ESU license from an Arc-Enabled Windows 2012 Machine
+This is a repository that hosts a forked and updated version of a sample set of scripted operations (Created by Adam Turner) using the Resource Manager API (provided by management.azure.com) to perform the following operations:
++ Create an ESU license (activated or deactivated)
++ Update an ESU license (activate or deactivate)
++ Link ESU license to an Arc-Enabled Windows 2012 Machine or specify an array of comma-separated machine names, or provide a CSV with a MachineName column
++ Delete linked ESU license from an Arc-Enabled Windows 2012 Machine, an array of machines, or provide a CSV
 + Deactivate an ESU license
 + Delete an ESU license
 
-In accordance with best practices I used a service principal to log in and perform these operations.  Note that your service principal should have appropriate permissions to deploy ESU licenses and assign licenses to Arc Enabled Machines.  The built-in RBAC permission you're looking for is "Azure Connected Machine Resource Administrator".  You could potentially use the same service principal that you used to onboard your machines to Arc.  Up to you on that note - if you'd like to use a separate identity due to security constraints/concerns that would be totally valid.
+This updated script is parameterized for a larger set of parameterized operations and will help manage ESUs and their assignments at scale while the Product Groups are developing official SDK-based automation through CLI/PowerShell.
 
-I cannot stress enough how important it is that the underpinning licensing requirements for ESU are understood.  If you use this you are responsible for the licensing count and ensuring that the number of cores applied meet all licensing requirements for ESU delivery.  At a minimum please ensure that you read through https://learn.microsoft.com/en-us/azure/azure-arc/servers/license-extended-security-updates - and if this is unclear and you are still uncertain, please work with your local Microsoft licensing expert to ensure that you are not breaking licensing compliance.
+You can use a Service Principal or your own credential to perform the operations in this script.  Note that your service principal should have appropriate permissions to deploy ESU licenses and assign licenses to Arc Enabled Machines.  The built-in RBAC permission you're looking for is "Azure Connected Machine Resource Administrator".  You could potentially use the same service principal that you used to onboard your machines to Arc.  Up to you on that note - if you'd like to use a separate identity due to security constraints/concerns that would be totally valid.
+
+It is important to understand the underlying licensing requirements for ESU.  If you use this you are responsible for the licensing count and ensuring that the number of cores applied meet all licensing requirements for ESU delivery.  At a minimum please ensure that you read through https://learn.microsoft.com/en-us/azure/azure-arc/servers/license-extended-security-updates - and if this is unclear and you are still uncertain, please work with your local Microsoft licensing expert to ensure that you are not breaking licensing compliance.
 
 # Pre-requisites:
 Tested on PowerShell 7.3.7 with PowerShell Az module 10.3.0 - running on prior versions will generate errors.
+You will need the Az.ConnectedMachine PowerShell module which can be installed by running
+```powershell
+Install-Module az.connectedmachine -scope currentuser
+```
 
 # Please note:
 This information is being provided as-is with the terms of the MIT license, with no warranty/guarantee or support.  It is free to use - and for demonstration purposes only.  The process of hardening this into your needs is a task I leave to you.
 
 # Additional note:
-This shows a mechanism to use the Resource Manager API to accomplish this task.  This will likely be simpler when PowerShell updates to the official Az module and when the CLI updates the same.  Resource Manager APIs are available now.
+Please see the help section in the script file for additional information about how to run the script and the different parameters required for different operations.  This was built to help streamline all aspects of ESU management automation into one script, so there are many parameters that are required together.
