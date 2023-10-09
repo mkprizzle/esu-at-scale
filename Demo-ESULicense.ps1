@@ -13,10 +13,7 @@
     The tenant ID of the Azure subscription.
 
 .PARAMETER ApplicationId
-    The application ID of the service principal. Do not specify if using your own login.
-
-.PARAMETER SecurePassword
-    The password of the service principal. Do not specify if using your own login.
+    The application ID of the service principal. Do not specify if using your own login. The script will prompt for password if using ApplicationId.
 
 .PARAMETER region
     The Azure region to create licenses in. The Azure region of the VM in all other operations.
@@ -41,6 +38,9 @@
 
 .PARAMETER licenseResourceId
     The resource ID of the ESU license when performing Link, Unlink, Activate, Deactivate, or Delete operations.
+
+.PARAMETER licenseName
+    An optional name parameter for the license when performing Create operations. If not specified, the license will be named Datacenter-pCore or Standard-vCore, etc. depending on the license type.
 
 .EXAMPLE
     .\Demo-ESULicense.ps1 -licenseOperation Create -TenantId "00000000-0000-0000-0000-000000000000" -ApplicationId "00000000-0000-0000-0000-000000000000" `
@@ -68,15 +68,14 @@
 #>
 
 param(
-    #[parameter(Mandatory=$true, allowedValues = 'Create', 'Deactivate', 'Activate', 'Link', 'Unlink', 'Delete')]
+    [parameter(Mandatory=$true)]
+    [ValidateSet("Create","Deactivate","Activate","Link","Unlink","Delete")]
     $licenseOperation,
 
     [parameter(Mandatory=$true)]
     $TenantId,
 
     $ApplicationId,
-
-    [securestring]$SecurePassword,
 
     [parameter(Mandatory=$true)]
     $region,
@@ -95,15 +94,25 @@ param(
 
     [switch]$AllMachinesInRG,
 
-    $licenseResourceId
+    $licenseResourceId,
+
+    $licenseName
 )
 
 
 #If ServicePrincipal is used, connect to Azure with Service Principal and retrieve bearer token
 if ($ApplicationId) {
+    [securestring]$SecurePassword = $(Read-Host -Prompt "Enter password" -AsSecureString)
+    #$SecurePassword = ConvertTo-SecureString -String $SecurePassword -AsPlainText -Force
     $Credential = New-Object -TypeName System.Management.Automation.PSCredential -ArgumentList $ApplicationId, $SecurePassword
-    Connect-AzAccount -ServicePrincipal -TenantId $TenantId -Credential $Credential
-    $token = (Get-AzAccessToken -ResourceUrl 'https://management.azure.com').Token
+    try {
+        Connect-AzAccount -ServicePrincipal -TenantId $TenantId -Credential $Credential
+        $token = (Get-AzAccessToken -ResourceUrl 'https://management.azure.com').Token
+    }
+    catch {
+        Write-Output "Failed to connect to Azure with Service Principal - Check your credentials or try as the current user"
+        exit
+    }
 }
 else {
     try {
@@ -115,9 +124,15 @@ else {
     }
     catch{
         Write-Output "No context found, logging in and setting context"
-        Connect-AzAccount -Tenant $TenantId
-        Set-AzContext -Subscription $subscriptionId
-        $token = (Get-AzAccessToken -ResourceUrl 'https://management.azure.com').Token
+        try{
+            Connect-AzAccount -Tenant $TenantId
+            Set-AzContext -Subscription $subscriptionId
+            $token = (Get-AzAccessToken -ResourceUrl 'https://management.azure.com').Token
+        }
+        catch{
+            Write-Output "Failed to connect to Azure - Check your credentials"
+            exit
+        }
     }
 }
 
@@ -150,10 +165,12 @@ Function CreateLicense {
         $subscriptionId,
 
         [parameter(Mandatory=$true)]
-        $resourceGroup
+        $resourceGroup,
+
+        $licenseName
     )
 
-   $licenseResourceId = "/subscriptions/{0}/resourceGroups/{1}/providers/Microsoft.HybridCompute/licenses/{2}" -f $subscriptionId, $resourceGroup, $($licenseEdition+"-"+$licenseType) 
+   $licenseResourceId = "/subscriptions/{0}/resourceGroups/{1}/providers/Microsoft.HybridCompute/licenses/{2}" -f $subscriptionId, $resourceGroup, $($licenseName+$licenseEdition+"-"+$licenseType) 
 
     $createLicenseUrl =  "https://management.azure.com{0}?api-version=2023-06-20-preview" -f $licenseResourceId 
     $createBody = @{
@@ -319,7 +336,7 @@ if ($licenseOperation -eq "Create") {
     }
     $processors = Read-Host "Please enter the core count, vCore must be at least 8, pCore must be at least 16. (8/16)"
 
-    CreateLicense $token $licenseTarget $licenseEdition $licenseType $licenseState $processors $region $subscriptionId $resourceGroup
+    CreateLicense $token $licenseTarget $licenseEdition $licenseType $licenseState $processors $region $subscriptionId $resourceGroup $licenseName
 }
 elseif ($licenseOperation -eq "Activate" -or $licenseOperation -eq "Deactivate") {
     UpdateLicense $licenseResourceId $token $licenseOperation
