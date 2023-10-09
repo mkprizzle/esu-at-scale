@@ -7,7 +7,7 @@ This is a repository that hosts a forked and updated version of a sample set of 
 + Deactivate an ESU license
 + Delete an ESU license
 
-This updated script is parameterized for a larger set of parameterized operations and will help manage ESUs and their assignments at scale while the Product Groups are developing official SDK-based automation through CLI/PowerShell.
+This updated script is parameterized for a larger set of idempotent operations and will help manage ESUs and their assignments at scale while the Product Groups are developing official SDK-based automation through CLI/PowerShell.
 
 You can use a Service Principal or your own credential to perform the operations in this script.  Note that your service principal should have appropriate permissions to deploy ESU licenses and assign licenses to Arc Enabled Machines.  The built-in role permission required to create and assign licenses to Arc-enabled machines is either "Contributor" or "Owner" roles.  The specific permission is 'Microsoft.HybridCompute/licenses/write'
 
