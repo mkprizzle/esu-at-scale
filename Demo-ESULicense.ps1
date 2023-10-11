@@ -279,10 +279,19 @@ Function DeleteLicenseLink {
     )
     $machineResourceId = (Get-AzConnectedMachine -Name $machineName -ResourceGroupName $resourceGroup).Id
     $linkLicenseUrl = "https://management.azure.com{0}/licenseProfiles/default?api-version=2023-06-20-preview " -f $machineResourceId
+    $linkBody = @{
+        location = $region
+        properties = @{ 
+            esuProfile = @{ 
+                assignedLicense = $null
+            } 
+        } 
+    }
+    $bodyJson = $linkBody | ConvertTo-Json -Depth 3
     $headers = @{
         Authorization = "Bearer $token"
     }
-    Invoke-WebRequest -Uri $linkLicenseUrl -Method Delete -Headers $headers
+    Invoke-WebRequest -Uri $linkLicenseUrl -Method PUT -Body $bodyJson -Headers $headers -ContentType "application/json"
 
 }
 
