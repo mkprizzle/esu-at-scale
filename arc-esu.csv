@@ -1,0 +1,2 @@
+﻿ServerName,Edition,LicenseType,CoreCount,TargetSubscriptionID,MachineResourceGroupName,LicenseResourceGroupName,Region
+SampleMachine,Standard,vCore,8,123456677-34234-23534532,test,test,eastus2
