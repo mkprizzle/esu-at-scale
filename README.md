@@ -21,7 +21,8 @@ This version of the script allows Service Principal only to enable cross-subscri
 
 It is important to understand the underlying licensing requirements for ESU.  If you use this you are responsible for the licensing count and ensuring that the number of cores applied meet all licensing requirements for ESU delivery.  At a minimum please ensure that you read through https://learn.microsoft.com/en-us/azure/azure-arc/servers/license-extended-security-updates - and if this is unclear and you are still uncertain, please work with your local Microsoft licensing expert to ensure that you are not breaking licensing compliance.
 
-**CRITICAL IMPORTANCE** do not add MSDN/Visual Studio licensed dev/test/nonprod servers to your deployment list! Those must be linked to a production server license and tagged specially. That is still a manual process in the Azure Portal which is relatively simple and straightforward, even at scale. You will be billed for dev/test licenses if you create specific licenses for them!
+## CRITICAL IMPORTANCE 
+**Do not add MSDN/Visual Studio licensed dev/test/nonprod servers to your deployment list! Those must be linked to a production server license and tagged specially. That is still a manual process in the Azure Portal which is relatively simple and straightforward, even at scale. You will be billed for dev/test licenses if you create specific licenses for them!**
 
 # Pre-requisites:
 Tested on PowerShell 7.3.7 with PowerShell Az module 10.3.0 - running on prior versions will generate errors.
@@ -31,7 +32,7 @@ Install-Module az.connectedmachine -scope currentuser
 ```
 
 # Preparing arc-esu.csv
-## Please do not change headings on the CSV which will break the script
+### Please do not change headings on the CSV which will break the script
 + ServerName: Name of the server in Arc. All licenses will be named ServerName-ESU
 + Edition: Standard or Datacenter
 + LicenseType: vCore or pCore
