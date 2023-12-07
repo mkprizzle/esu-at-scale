@@ -1,4 +1,4 @@
-# Azure Arc Enabled Windows 2012 ESU
+# Azure Arc Enabled Windows 2012 ESU At Scale
 This is a repository that hosts a modified forked repo version of a sample set of scripted operations (Created by Adam Turner, modified by Jordan Norby) using the Resource Manager API (provided by management.azure.com) to perform the following operations at scale and based on real-world usage:
 + Create ESU licenses in an activated state and link them to many servers
 + Create deactivated ESU licenses for staging while payment terms are being negotiated
@@ -10,9 +10,8 @@ This version of the script takes feedback from real-world usage and the need for
 + Multiple subscription/resource group cross-deployment
 + Multiple core type and core count deployment in a single run for massive deployment scenarios
 + Differentiated Create Only vs Create, activate, and link run scenarios which can be useful for staging and attaching later if contracts are still in progress
-
-What this does *not* do (yet)
-+ One-to-many server links, which will link one license to multiple machines by groupings
++ Link production licenses to MSDN/Visual Studio Dev/Test or DR servers for free ESU and tagging them appropriately
++ One-to-many license-to-server links, such as when a physical host license covers multiple VMs
 
 This version of the script allows Service Principal only to enable cross-subscription ESU enablement if needed. Note that your service principal should have appropriate permissions to deploy ESU licenses and assign licenses to Arc Enabled Machines. The built-in role permission required to create and assign licenses to Arc-enabled machines is either "Contributor" or "Owner" roles. The least privilege method to run this script is to create a custom role based off of 'Azure Connected Machine Resource Administrator' with the added permissions:
 + Microsoft.HybridCompute/licenses/write
@@ -21,8 +20,17 @@ This version of the script allows Service Principal only to enable cross-subscri
 
 It is important to understand the underlying licensing requirements for ESU.  If you use this you are responsible for the licensing count and ensuring that the number of cores applied meet all licensing requirements for ESU delivery.  At a minimum please ensure that you read through https://learn.microsoft.com/en-us/azure/azure-arc/servers/license-extended-security-updates - and if this is unclear and you are still uncertain, please work with your local Microsoft licensing expert to ensure that you are not breaking licensing compliance.
 
-## CRITICAL IMPORTANCE 
-**Do not add MSDN/Visual Studio licensed dev/test/nonprod servers to your deployment list! Those must be linked to a production server license and tagged specially. That is still a manual process in the Azure Portal which is relatively simple and straightforward, even at scale. You will be billed for dev/test licenses if you create specific licenses for them!**
+## MSDN/Dev/Test/Visual Studio and DR Licensing
+Dev/Test licensed under MSDN and DR instances [\(check if you benefit\)](https://www.microsoft.com/en-us/licensing/licensing-programs/software-assurance-by-benefits) can be linked to production licenses for free ESU. To do this, leave the licensing details out of the CSV (as seen in the example provided CSV) and input the production server the dev server is associated with under the `AssociatedProdServer` column. If the server falls under the DR benefit, check that box for proper tagging. The script will automatically skip creation of a license for the server and attempt to link the production server's license to it and then tag both the license and target server for compliance. **It is important that the production servers appear first in the CSV list to ensure the production license is created before attempting to link dev servers to it, or the script will fail**
+
+**Do not use `AssociatedProdServer` with `AssociatedHost` as these settings are incompatible**
+
+https://learn.microsoft.com/en-us/azure/azure-arc/servers/deliver-extended-security-updates#additional-scenarios
+
+## One-to-many Licensing Across Servers
+You can create one license for multiple servers, such as the case when a physical host is being licensed for several VMs. Omit the licensing details such as core counts, editions and types in the CSV for servers you would like to associate to a host. Add the host (or server license you would like to assign to multiple VMsif not using physical host licensing) in the `AssociatedHost` column. **It is important that the host server appears first in the CSV list to ensure the host license is created before attempting to link associated servers to it, or the script will fail**
+
+**Do not use `AssociatedProdServer` with `AssociatedHost` as these settings are incompatible**
 
 # Pre-requisites:
 Tested on PowerShell 7.3.7 with PowerShell Az module 10.3.0 - running on prior versions will generate errors.
@@ -40,6 +48,10 @@ Install-Module az.connectedmachine -scope currentuser
 + TargetSubscriptionID: Subscription hosting the Arc servers and licenses
 + MachineResourceGroupName: RG where the Arc machines live
 + LicenseResourceGroupName: RG where the licenses should be created (can be the same RG and often preferable)
++ Region: Azure region for the license to be created. Make sure the input is a valid Arc License region
++ AssociatedHost: Enter a host server (or other shared license) from higher up the list to associate its license to this server. Do not use with `AssociatedProdServer`
++ IsDR: Enter any input here if the server is DR as entitled by software assurance. Used with `AssociatedProdServer`
++ AssociatedProdServer: Enter a production server from higher up the list to associate its license to this server. Use only for Dev/Test MSDN or DR servers as entitled. Do not use with `AssociatedHost`
 
 # Please note:
 This information is being provided as-is with the terms of the MIT license, with no warranty/guarantee or support. It is free to use - and for demonstration purposes only. The process of hardening this for your needs is a task I leave to you.
