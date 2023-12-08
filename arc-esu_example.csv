@@ -1,0 +1,10 @@
+﻿ServerName,Edition,LicenseType,CoreCount,TargetSubscriptionID,MachineResourceGroupName,LicenseResourceGroupName,Region,HostToLink,IsDR,ProdServerToLink
+physical1,Datacenter,pCore,96,123456677-34234-23534532,arc-rg,arc-rg,eastus2,,,
+physical2,Standard,pCore,16,123456677-34234-23534532,arc-rg,arc-rg,eastus2,,,
+physical3,Standard,pCore,16,123456677-34234-23534532,arc-rg,arc-rg,eastus2,,,
+vm1,Standard,,,123456677-34234-23534532,arc-rg,arc-rg,eastus2,physical1,,
+vm2,Standard,,,123456677-34234-23534532,arc-rg,arc-rg,eastus2,physical1,,
+vm3,Standard,,,123456677-34234-23534532,arc-rg,arc-rg,eastus2,physical1,,
+vm4-prod,Standard,vCore,8,123456677-34234-23534532,arc-rg,arc-rg,eastus2,,,
+vm4-dev,Standard,,,123456677-34234-23534532,arc-rg,arc-rg,eastus2,,,vm4-prod
+vm4-dr,Standard,,,123456677-34234-23534532,arc-rg,arc-rg,eastus2,,Yes,vm4-prod

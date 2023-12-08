@@ -1,17 +1,4 @@
 [CmdletBinding()]
-
-#------------------------------------------------------------------------------------------------------------------#
-############################################## IMPORTANT NOTE ######################################################
-################################## DO NOT PLACE MSDN/VISUAL STUDIO LICENSED ########################################
-#################################### DEV/TEST/NONPROD SERVERS IN THE CSV ###########################################
-############################ THESE ARE LICENSED SEPARATELY! MANUALLY LINK THEM #####################################
-############################### TO A PRODUCTION LICENSE IN THE AZURE PORTAL ########################################
-##################################### OR YOU WILL BE CHARGED FOR THEM! #############################################
-######################################## ~Your friendly Azure CSA ##################################################
-# https://learn.microsoft.com/en-us/azure/azure-arc/servers/deliver-extended-security-updates#additional-scenarios #
-#------------------------------------------------------------------------------------------------------------------#
-
-
 <#
 .SYNOPSIS
     This script will create and link new ESU licenses or activate and link deactivated ESU licenses for Windows 2012 machines.
@@ -119,34 +106,44 @@ Function Create-License {
         $licenseType = $row.LicenseType
         $processors = $row.CoreCount
         $region = $row.Region
+        $AssociatedHost = $row.AssociatedHost
+        $AssociatedProdServer = $row.AssociatedProdServer
         if ($licenseOperation -eq 'CreateDeactivatedOnly') { $licenseState = 'Deactivated' }
         else { $licenseState = 'Activated' }
 
-        # This is the generated resource id for the license - it might be helpful to name this off the machine for readability/ensure uniqueness.  
-        $licenseResourceId = "/subscriptions/{0}/resourceGroups/{1}/providers/Microsoft.HybridCompute/licenses/{2}" -f $subscriptionId, $licenseResourceGroupName, $($serverName+"-ESU")   
-    
-        #create an ESU license  
-        $createLicenseUrl =  "https://management.azure.com{0}?api-version=2023-06-20-preview" -f $licenseResourceId   
-        $createBody = @{
-            'location' = $region
-            'properties' = @{
-                'licenseDetails' = @{
-                    'state' = $licenseState
-                    'target' = $licenseTarget
-                    "Edition" = $licenseEdition
-                    "Type" = $licenseType
-                    "Processors" = $processors
+        # Feature Flag to check for multiple servers or dev-prod. We link existing licenses to these rather than create new
+        if (!$AssociatedHost -and !$AssociatedProdServer) {
+            # This is the generated resource id for the license - it might be helpful to name this off the machine for readability/ensure uniqueness.  
+            $licenseResourceId = "/subscriptions/{0}/resourceGroups/{1}/providers/Microsoft.HybridCompute/licenses/{2}" -f $subscriptionId, $licenseResourceGroupName, $($serverName+"-ESU")   
+        
+            #create an ESU license  
+            $createLicenseUrl =  "https://management.azure.com{0}?api-version=2023-06-20-preview" -f $licenseResourceId   
+            $createBody = @{
+                'location' = $region
+                'properties' = @{
+                    'licenseDetails' = @{
+                        'state' = $licenseState
+                        'target' = $licenseTarget
+                        "Edition" = $licenseEdition
+                        "Type" = $licenseType
+                        "Processors" = $processors
+                    }
                 }
             }
-        }
-        $bodyJson = $createBody | ConvertTo-Json -Depth 3
-        $headers = @{
-            Authorization = "Bearer $token"
-        }
-        Invoke-WebRequest -Uri $createLicenseUrl -Method Put -Body $bodyJson -Headers $headers -ContentType "application/json"
+            $bodyJson = $createBody | ConvertTo-Json -Depth 3
+            $headers = @{
+                Authorization = "Bearer $token"
+            }
+            Invoke-WebRequest -Uri $createLicenseUrl -Method Put -Body $bodyJson -Headers $headers -ContentType "application/json"
 
-        if ($licenseOperation -eq 'CreateAndLink') {
-            Link-License $token $machineData
+            if ($licenseOperation -eq 'CreateAndLink') {
+                Link-License $token $machineData
+            }
+        }
+        else {
+            if ($licenseOperation -eq 'CreateAndLink') {
+                Link-License $token $machineData
+            }
         }
     }
 }
@@ -163,26 +160,31 @@ Function Activate-License {
         $subscriptionId = $row.TargetSubscriptionID
         $licenseResourceGroupName = $row.LicenseResourceGroupName
         $serverName = $row.ServerName
+        $AssociatedHost = $row.AssociatedHost
+        $AssociatedProdServer = $row.AssociatedProdServer
 
         $licenseResourceId = "/subscriptions/{0}/resourceGroups/{1}/providers/Microsoft.HybridCompute/licenses/{2}" -f $subscriptionId, $licenseResourceGroupName, $($serverName+"-ESU") 
 
         # Activate the license
-        $updateLicenseUrl =  "https://management.azure.com{0}?api-version=2023-06-20-preview" -f $licenseResourceId
+        # Feature flag to skip activation on nonprod or shared-license servers
+        if (!$AssociatedHost -and !$AssociatedProdServer) {
+            $updateLicenseUrl =  "https://management.azure.com{0}?api-version=2023-06-20-preview" -f $licenseResourceId
 
-        $licenseState = 'Activated'
-        $updateBody = @{
-            'properties' = @{
-                'licenseDetails' = @{
-                    'state' = $licenseState
+            $licenseState = 'Activated'
+            $updateBody = @{
+                'properties' = @{
+                    'licenseDetails' = @{
+                        'state' = $licenseState
+                    }
                 }
             }
-        }
-        $bodyJson = $updateBody | ConvertTo-Json -Depth 3
+            $bodyJson = $updateBody | ConvertTo-Json -Depth 3
 
-        $headers = @{
-            Authorization = "Bearer $token"
+            $headers = @{
+                Authorization = "Bearer $token"
+            }
+            Invoke-WebRequest -Uri $updateLicenseUrl -Method Patch -Body $bodyJson -Headers $headers -ContentType "application/json"
         }
-        Invoke-WebRequest -Uri $updateLicenseUrl -Method Patch -Body $bodyJson -Headers $headers -ContentType "application/json"
     }
 }
 
@@ -200,9 +202,24 @@ Function Link-License {
         $machineResourceGroupName = $row.MachineResourceGroupName
         $serverName = $row.ServerName
         $region = $row.Region
+        $AssociatedHost = $row.AssociatedHost
+        $AssociatedProdServer = $row.AssociatedProdServer
+        $isDR = $row.IsDR
         
-        $licenseResourceId = "/subscriptions/{0}/resourceGroups/{1}/providers/Microsoft.HybridCompute/licenses/{2}" -f $subscriptionId, $licenseResourceGroupName, $($serverName+"-ESU") 
-        $machineResourceId = (Get-AzConnectedMachine -Name $serverName -ResourceGroupName $machineResourceGroupName).Id
+        # Flags to determine which license to use
+        # Use the physical host license for these servers
+        if ($AssociatedHost) {
+            $licenseResourceId = "/subscriptions/{0}/resourceGroups/{1}/providers/Microsoft.HybridCompute/licenses/{2}" -f $subscriptionId, $licenseResourceGroupName, $($AssociatedHost+"-ESU")
+        }
+        # Use a prod server license for this MSDN/Dev/Test/Prod server
+        elseif ($AssociatedProdServer) {
+            $licenseResourceId = "/subscriptions/{0}/resourceGroups/{1}/providers/Microsoft.HybridCompute/licenses/{2}" -f $subscriptionId, $licenseResourceGroupName, $($AssociatedProdServer+"-ESU")
+        }
+        # Use a 1:1 license to server
+        else {
+            $licenseResourceId = "/subscriptions/{0}/resourceGroups/{1}/providers/Microsoft.HybridCompute/licenses/{2}" -f $subscriptionId, $licenseResourceGroupName, $($serverName+"-ESU") 
+        }
+        $machineResourceId = (Get-AzConnectedMachine -Name $serverName -ResourceGroupName $machineResourceGroupName -SubscriptionId $subscriptionId).Id
         $linkLicenseUrl = "https://management.azure.com{0}/licenseProfiles/default?api-version=2023-06-20-preview " -f $machineResourceId
         $linkBody = @{
             location = $region
@@ -217,6 +234,17 @@ Function Link-License {
             Authorization = "Bearer $token"
         }
         Invoke-WebRequest -Uri $linkLicenseUrl -Method PUT -Body $bodyJson -Headers $headers -ContentType "application/json"
+
+        # Tag the license and server Arc object for nonprod compliance
+        if ($AssociatedProdServer) {
+            if ($isDR) { $tags = @{"ESU Usage"="WS2012 DISASTER RECOVERY"} }
+            else { $tags = @{"ESU Usage"="WS2012 VISUAL STUDIO DEV TEST"} }
+            Update-AzTag -ResourceId $machineResourceId -Tag $tags -Operation Merge
+
+            # Tag the Prod License object for compliance
+            $licenseResourceId = "/subscriptions/{0}/resourceGroups/{1}/providers/Microsoft.HybridCompute/licenses/{2}" -f $subscriptionId, $licenseResourceGroupName, $($AssociatedProdServer+"-ESU")
+            Update-AzTag -ResourceId $licenseResourceId -Tag $tags -Operation Merge
+        }
     }
 }
 
