@@ -1,1 +1,1 @@
-﻿ServerName,Edition,LicenseType,CoreCount,TargetSubscriptionID,MachineResourceGroupName,LicenseResourceGroupName,Region,AssociatedHost,IsDR,AssociatedProdServer
+﻿ServerName,Edition,LicenseType,CoreCount,TargetSubscriptionID,MachineResourceGroupName,LicenseResourceGroupName,Region,IsPhysicalHost,AssociatedPhysicalHost,IsDR,AssociatedProdServer

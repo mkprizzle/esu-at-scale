@@ -97,22 +97,23 @@ Function Create-License {
     # Create esu licenses
     foreach ($row in $machineData) {  
         # License variables
-        $subscriptionId = $row.TargetSubscriptionID
+        $subscriptionId           = $row.TargetSubscriptionID
         $licenseResourceGroupName = $row.LicenseResourceGroupName
         $machineResourceGroupName = $row.MachineResourceGroupName
-        $serverName = $row.ServerName
-        $licenseTarget = 'Windows Server 2012'
-        $licenseEdition = $row.Edition
-        $licenseType = $row.LicenseType
-        $processors = $row.CoreCount
-        $region = $row.Region
-        $AssociatedHost = $row.AssociatedHost
-        $AssociatedProdServer = $row.AssociatedProdServer
+        $serverName               = $row.ServerName
+        $licenseTarget            = 'Windows Server 2012'
+        $licenseEdition           = $row.Edition
+        $licenseType              = $row.LicenseType
+        $processors               = $row.CoreCount
+        $region                   = $row.Region
+        $associatedPhysicalHost   = $row.AssociatedPhysicalHost
+        $associatedProdServer     = $row.AssociatedProdServer
+        
         if ($licenseOperation -eq 'CreateDeactivatedOnly') { $licenseState = 'Deactivated' }
         else { $licenseState = 'Activated' }
 
         # Feature Flag to check for multiple servers or dev-prod. We link existing licenses to these rather than create new
-        if (!$AssociatedHost -and !$AssociatedProdServer) {
+        if (!$associatedPhysicalHost -and !$associatedProdServer) {
             # This is the generated resource id for the license - it might be helpful to name this off the machine for readability/ensure uniqueness.  
             $licenseResourceId = "/subscriptions/{0}/resourceGroups/{1}/providers/Microsoft.HybridCompute/licenses/{2}" -f $subscriptionId, $licenseResourceGroupName, $($serverName+"-ESU")   
         
@@ -157,17 +158,17 @@ Function Activate-License {
     )
 
     foreach ($row in $machineData) {  
-        $subscriptionId = $row.TargetSubscriptionID
+        $subscriptionId           = $row.TargetSubscriptionID
         $licenseResourceGroupName = $row.LicenseResourceGroupName
-        $serverName = $row.ServerName
-        $AssociatedHost = $row.AssociatedHost
-        $AssociatedProdServer = $row.AssociatedProdServer
+        $serverName               = $row.ServerName
+        $associatedPhysicalHost   = $row.AssociatedPhysicalHost
+        $associatedProdServer     = $row.AssociatedProdServer
 
         $licenseResourceId = "/subscriptions/{0}/resourceGroups/{1}/providers/Microsoft.HybridCompute/licenses/{2}" -f $subscriptionId, $licenseResourceGroupName, $($serverName+"-ESU") 
 
         # Activate the license
         # Feature flag to skip activation on nonprod or shared-license servers
-        if (!$AssociatedHost -and !$AssociatedProdServer) {
+        if (!$associatedPhysicalHost -and !$associatedProdServer) {
             $updateLicenseUrl =  "https://management.azure.com{0}?api-version=2023-06-20-preview" -f $licenseResourceId
 
             $licenseState = 'Activated'
@@ -197,53 +198,57 @@ Function Link-License {
     )
 
     foreach ($row in $machineData) {
-        $subscriptionId = $row.TargetSubscriptionID
+        $subscriptionId           = $row.TargetSubscriptionID
         $licenseResourceGroupName = $row.LicenseResourceGroupName
         $machineResourceGroupName = $row.MachineResourceGroupName
-        $serverName = $row.ServerName
-        $region = $row.Region
-        $AssociatedHost = $row.AssociatedHost
-        $AssociatedProdServer = $row.AssociatedProdServer
-        $isDR = $row.IsDR
+        $serverName               = $row.ServerName
+        $region                   = $row.Region
+        $associatedPhysicalHost   = $row.AssociatedPhysicalHost
+        $associatedProdServer     = $row.AssociatedProdServer
+        $isDR                     = $row.IsDR
+        $isPhysicalHost           = $row.IsPhysicalHost
         
-        # Flags to determine which license to use
-        # Use the physical host license for these servers
-        if ($AssociatedHost) {
-            $licenseResourceId = "/subscriptions/{0}/resourceGroups/{1}/providers/Microsoft.HybridCompute/licenses/{2}" -f $subscriptionId, $licenseResourceGroupName, $($AssociatedHost+"-ESU")
-        }
-        # Use a prod server license for this MSDN/Dev/Test/Prod server
-        elseif ($AssociatedProdServer) {
-            $licenseResourceId = "/subscriptions/{0}/resourceGroups/{1}/providers/Microsoft.HybridCompute/licenses/{2}" -f $subscriptionId, $licenseResourceGroupName, $($AssociatedProdServer+"-ESU")
-        }
-        # Use a 1:1 license to server
-        else {
-            $licenseResourceId = "/subscriptions/{0}/resourceGroups/{1}/providers/Microsoft.HybridCompute/licenses/{2}" -f $subscriptionId, $licenseResourceGroupName, $($serverName+"-ESU") 
-        }
-        $machineResourceId = (Get-AzConnectedMachine -Name $serverName -ResourceGroupName $machineResourceGroupName -SubscriptionId $subscriptionId).Id
-        $linkLicenseUrl = "https://management.azure.com{0}/licenseProfiles/default?api-version=2023-06-20-preview " -f $machineResourceId
-        $linkBody = @{
-            location = $region
-            properties = @{
-                esuProfile = @{
-                    assignedLicense = $licenseResourceId
+        # If this is a physical host, we don't link the license to the host server. We just create the license, activate it, then link VMs to the host license
+        if (!$isPhysicalHost) {
+            # Flags to determine which license to use
+            # Use the physical host license for these servers
+            if ($associatedPhysicalHost) {
+                $licenseResourceId = "/subscriptions/{0}/resourceGroups/{1}/providers/Microsoft.HybridCompute/licenses/{2}" -f $subscriptionId, $licenseResourceGroupName, $($associatedPhysicalHost+"-ESU")
+            }
+            # Use a prod server license for this MSDN/Dev/Test/Prod server
+            elseif ($associatedProdServer) {
+                $licenseResourceId = "/subscriptions/{0}/resourceGroups/{1}/providers/Microsoft.HybridCompute/licenses/{2}" -f $subscriptionId, $licenseResourceGroupName, $($associatedProdServer+"-ESU")
+            }
+            # Use a 1:1 license to server
+            else {
+                $licenseResourceId = "/subscriptions/{0}/resourceGroups/{1}/providers/Microsoft.HybridCompute/licenses/{2}" -f $subscriptionId, $licenseResourceGroupName, $($serverName+"-ESU") 
+            }
+            $machineResourceId = (Get-AzConnectedMachine -Name $serverName -ResourceGroupName $machineResourceGroupName -SubscriptionId $subscriptionId).Id
+            $linkLicenseUrl = "https://management.azure.com{0}/licenseProfiles/default?api-version=2023-06-20-preview " -f $machineResourceId
+            $linkBody = @{
+                location = $region
+                properties = @{
+                    esuProfile = @{
+                        assignedLicense = $licenseResourceId
+                    }
                 }
             }
-        }
-        $bodyJson = $linkBody | ConvertTo-Json -Depth 3
-        $headers = @{
-            Authorization = "Bearer $token"
-        }
-        Invoke-WebRequest -Uri $linkLicenseUrl -Method PUT -Body $bodyJson -Headers $headers -ContentType "application/json"
+            $bodyJson = $linkBody | ConvertTo-Json -Depth 3
+            $headers = @{
+                Authorization = "Bearer $token"
+            }
+            Invoke-WebRequest -Uri $linkLicenseUrl -Method PUT -Body $bodyJson -Headers $headers -ContentType "application/json"
 
-        # Tag the license and server Arc object for nonprod compliance
-        if ($AssociatedProdServer) {
-            if ($isDR) { $tags = @{"ESU Usage"="WS2012 DISASTER RECOVERY"} }
-            else { $tags = @{"ESU Usage"="WS2012 VISUAL STUDIO DEV TEST"} }
-            Update-AzTag -ResourceId $machineResourceId -Tag $tags -Operation Merge
+            # Tag the license and server Arc object for nonprod compliance
+            if ($associatedProdServer) {
+                if ($isDR) { $tags = @{"ESU Usage"="WS2012 DISASTER RECOVERY"} }
+                else { $tags = @{"ESU Usage"="WS2012 VISUAL STUDIO DEV TEST"} }
+                Update-AzTag -ResourceId $machineResourceId -Tag $tags -Operation Merge
 
-            # Tag the Prod License object for compliance
-            $licenseResourceId = "/subscriptions/{0}/resourceGroups/{1}/providers/Microsoft.HybridCompute/licenses/{2}" -f $subscriptionId, $licenseResourceGroupName, $($AssociatedProdServer+"-ESU")
-            Update-AzTag -ResourceId $licenseResourceId -Tag $tags -Operation Merge
+                # Tag the Prod License object for compliance
+                $licenseResourceId = "/subscriptions/{0}/resourceGroups/{1}/providers/Microsoft.HybridCompute/licenses/{2}" -f $subscriptionId, $licenseResourceGroupName, $($associatedProdServer+"-ESU")
+                Update-AzTag -ResourceId $licenseResourceId -Tag $tags -Operation Merge
+            }
         }
     }
 }
