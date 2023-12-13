@@ -23,14 +23,14 @@ It is important to understand the underlying licensing requirements for ESU.  If
 ## MSDN/Dev/Test/Visual Studio and DR Licensing
 Dev/Test licensed under MSDN and DR instances [\(check if you benefit\)](https://www.microsoft.com/en-us/licensing/licensing-programs/software-assurance-by-benefits) can be linked to production licenses for free ESU. To do this, leave the licensing details out of the CSV (as seen in the example provided CSV) and input the production server the dev server is associated with under the `AssociatedProdServer` column. If the server falls under the DR benefit, check that box for proper tagging. The script will automatically skip creation of a license for the server and attempt to link the production server's license to it and then tag both the license and target server for compliance. **It is important that the production servers appear first in the CSV list to ensure the production license is created before attempting to link dev servers to it, or the script will fail**
 
-**Do not use `AssociatedProdServer` with `AssociatedHost` as these settings are incompatible**
+**Do not use `AssociatedProdServer` with `AssociatedPhysicalHost` as these settings are incompatible**
 
 https://learn.microsoft.com/en-us/azure/azure-arc/servers/deliver-extended-security-updates#additional-scenarios
 
 ## One-to-many Licensing Across Servers
-You can create one license for multiple servers, such as the case when a physical host is being licensed for several VMs. Omit the licensing details such as core counts, editions and types in the CSV for servers you would like to associate to a host. Add the host (or server license you would like to assign to multiple VMsif not using physical host licensing) in the `AssociatedHost` column. **It is important that the host server appears first in the CSV list to ensure the host license is created before attempting to link associated servers to it, or the script will fail**
+You can create one license for multiple servers, such as the case when a physical host is being licensed for several VMs. Omit the licensing details such as core counts, editions and types in the CSV for servers you would like to associate to a host. Add the host (or server license you would like to assign to multiple VMsif not using physical host licensing) in the `AssociatedPhysicalHost` column. **It is important that the host server appears first in the CSV list to ensure the host license is created before attempting to link associated servers to it, or the script will fail**
 
-**Do not use `AssociatedProdServer` with `AssociatedHost` as these settings are incompatible**
+**Do not use `AssociatedProdServer` with `AssociatedPhysicalHost` as these settings are incompatible**
 
 # Pre-requisites:
 Tested on PowerShell 7.3.7 with PowerShell Az module 10.3.0 - running on prior versions will generate errors.
@@ -41,17 +41,18 @@ Install-Module az.connectedmachine -scope currentuser
 
 # Preparing arc-esu.csv
 ### Please do not change headings on the CSV which will break the script
-+ ServerName: Name of the server in Arc. All licenses will be named ServerName-ESU
-+ Edition: Standard or Datacenter
-+ LicenseType: vCore or pCore
-+ CoreCount: 8 or higher for vCore, 16 or more for pCore
-+ TargetSubscriptionID: Subscription hosting the Arc servers and licenses
-+ MachineResourceGroupName: RG where the Arc machines live
-+ LicenseResourceGroupName: RG where the licenses should be created (can be the same RG and often preferable)
-+ Region: Azure region for the license to be created. Make sure the input is a valid Arc License region
-+ AssociatedHost: Enter a host server (or other shared license) from higher up the list to associate its license to this server. Do not use with `AssociatedProdServer`
-+ IsDR: Enter any input here if the server is DR as entitled by software assurance. Used with `AssociatedProdServer`
-+ AssociatedProdServer: Enter a production server from higher up the list to associate its license to this server. Use only for Dev/Test MSDN or DR servers as entitled. Do not use with `AssociatedHost`
++ **ServerName:** Name of the server in Arc. All licenses will be named ServerName-ESU
++ **Edition:** Standard or Datacenter
++ **LicenseType:** vCore or pCore
++ **CoreCount:** 8 or higher for vCore, 16 or more for pCore
++ **TargetSubscriptionID:** Subscription hosting the Arc servers and licenses
++ **MachineResourceGroupName:** RG where the Arc machines live
++ **LicenseResourceGroupName:** RG where the licenses should be created (can be the same RG and often preferable)
++ **Region:** Azure region for the license to be created. Make sure the input is a valid Arc License region
++ **AssociatedPhysicalHost:** Enter a host server (or other shared license) from higher up the list to associate its license to this server. Do not use with `AssociatedProdServer`
++ **IsDR:** Enter any input here if the server is DR as entitled by software assurance. Used with `AssociatedProdServer`
++ **AssociatedProdServer:** Enter a production server from higher up the list to associate its license to this server. Use only for Dev/Test MSDN or DR servers as entitled. Do not use with `AssociatedPhysicalHost`
++ **IsPhysicalHost:** Fill this field if the server name specifies a physical host server running many VMs. A license will be created for the host but will not be linked to the host (as it is not connected to Arc) This is the host license that `AssociatedPhysicalHost` will attempt to link VM servers to. Licenses of this nature should typically be physical core licenses on Windows Server Datacenter edition
 
 # Please note:
 This information is being provided as-is with the terms of the MIT license, with no warranty/guarantee or support. It is free to use - and for demonstration purposes only. The process of hardening this for your needs is a task I leave to you.
