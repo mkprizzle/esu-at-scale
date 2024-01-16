@@ -47,7 +47,7 @@ Install-Module az.connectedmachine -scope currentuser
 + **CoreCount:** 8 or higher for vCore, 16 or more for pCore
 + **TargetSubscriptionID:** Subscription hosting the Arc servers and licenses
 + **MachineResourceGroupName:** RG where the Arc machines live
-+ **LicenseResourceGroupName:** RG where the licenses should be created. This can be the same RG and is often preferable. **Make sure to create the resource group prior to running the script if not using the same RG as the arc machines as this script will not create the resource group for you!
++ **LicenseResourceGroupName:** RG where the licenses should be created. This can be the same RG and is often preferable. **Make sure to create the resource group prior to running the script if not using the same RG as the arc machines as this script will not create the resource group for you!**
 + **Region:** Azure region for the license to be created. Make sure the input is a valid Arc License region
 + **AssociatedPhysicalHost:** Enter a host server (or other shared license) from higher up the list to associate its license to this server. Do not use with `AssociatedProdServer`
 + **IsDR:** Enter any input here if the server is DR as entitled by software assurance. Used with `AssociatedProdServer`
